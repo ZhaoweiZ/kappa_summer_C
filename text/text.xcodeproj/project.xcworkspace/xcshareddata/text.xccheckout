@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>7D23489A-B73A-4719-93E6-8EFC4B0584FA</string>
+	<key>IDESourceControlProjectName</key>
+	<string>project</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>1D99F22FD41DCB48481796A10A484E7C2604579B</key>
+		<string>https://github.com/weilampard/kappa_summer.git</string>
+		<key>F9089E118D4F01DC65572A728F1DCEE0DB458480</key>
+		<string>https://github.com/aapandy2/synchrotron_calculator.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>text/text.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>1D99F22FD41DCB48481796A10A484E7C2604579B</key>
+		<string>../../../..</string>
+		<key>F9089E118D4F01DC65572A728F1DCEE0DB458480</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/aapandy2/synchrotron_calculator.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>F9089E118D4F01DC65572A728F1DCEE0DB458480</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>1D99F22FD41DCB48481796A10A484E7C2604579B</string>
+			<key>IDESourceControlWCCName</key>
+			<string></string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>F9089E118D4F01DC65572A728F1DCEE0DB458480</string>
+			<key>IDESourceControlWCCName</key>
+			<string>synchrotron_calculator</string>
+		</dict>
+	</array>
+</dict>
+</plist>
