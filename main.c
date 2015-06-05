@@ -57,12 +57,15 @@ int main(int argc, char *argv[])
     //define parameters of calculation
     double nu_c = (e * B)/(2. * M_PI * m * c);
     double i;
-    for (i = 1.; i < 1e6; i = i * 5.)
+    for (i = 1.; i < 2e6; i = i * 10.)
     {
         n_summation(i * nu_c);
+        printf("%f\n", C * n_peak_zhaowei(i * nu_c));
     }
-//    double nu = 1. * nu_c;
-
+    
+//    double nu = 10000. * nu_c;
+//    n_summation(nu);
+    
 //    printf("\n%e\n", trapez_norm(gamma_min, gamma_max));
 //    double check = gamma_integration_result(100, nu);
 //    printf("%f", check);
@@ -194,7 +197,7 @@ double trapez_n(double min, double max, double nu)
    	return (sum);
 }
 
-double n_peak_zhaowei(double nu)
+/*double n_peak_zhaowei(double nu)
 {
     double nu_c = (e * B)/(2. * M_PI * m * c);
     double n_overpeak = 91. * pow(21., log10(nu/nu_c));
@@ -254,10 +257,16 @@ double n_peak_zhaowei(double nu)
             return x_threshold;
         }
     }
-    
+    return 0;
     
 }
-
+*/
+double n_peak_zhaowei(double nu)
+{
+    double nu_c = (e * B)/(2. * M_PI * m * c);
+    double n_overpeak = 91. * pow(21., log10(nu/nu_c));
+    return n_overpeak;
+}
 
 
 double n_integration(double n_minus, double nu)
@@ -267,7 +276,7 @@ double n_integration(double n_minus, double nu)
         n_max = n_minus;
     }
     
-    int n_peak = 20;
+    int n_peak = 2000000000;
     
     double ans = trapez_n(n_max, C * n_peak_zhaowei(nu), nu);
 //    printf("\n%e\n", ans);
@@ -279,7 +288,7 @@ double n_summation(double nu)
     double j_nu = 0.;
     double nu_c = (e * B)/(2. * M_PI * m * c);
     double n_minus = (nu/nu_c) * fabs(sin(theta));
-    printf("%f", n_minus);
+//    printf("%f", n_minus);
     int x;
     for(x = (int)(n_minus+1.); x <= n_max + (int)n_minus ; x++)
     {
