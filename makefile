@@ -12,8 +12,8 @@ EXTRALIBS =  -lm -lgsl -lgslcblas
 EXE = iharmony
 all: $(EXE)
 
-SRCS = bessel_mod.c main.c
-OBJS = bessel_mod.o main.o
+SRCS = bessel_mod.c main.c integrate.c
+OBJS = bessel_mod.o main.o integrate.o
 
 $(OBJS) : $(INCS) makefile
 
