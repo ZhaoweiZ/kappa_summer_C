@@ -15,7 +15,7 @@
 //global variables
 double m = 9.1093826e-28;
 double c = 2.99792458e10;
-double theta_e = 180.;
+double theta_e = 10.;
 double e = 4.80320680e-10;
 double B = 30.;
 double n_e = 1.;
@@ -28,10 +28,10 @@ double p = 2.5;
 double gamma_min = 1.;
 double gamma_max = 1000.;
 double n_e_NT = 1.;
-//double gamma_cutoff = 1000.;
+//double gamma_cutoff = 1000.; also a kappa distribution parameter
 
 //kappa distribution parameters
-double kappa = 3.5;
+double kappa;
 double gamma_cutoff = 1000;
 
 //function declarations
@@ -47,6 +47,7 @@ double n_summation(double nu);
 double n_integration(double n_minus, double nu);
 double integrate(double min, double max, double n, double nu);
 double gsl_integrate(double min, double max, double n, double nu);
+double s_integrate(double min, double max, double n, double nu);
 double normalize_f();
 double power_law_to_be_normalized(double gamma, void * params);
 double power_law_f(double gamma);
@@ -54,15 +55,12 @@ double kappa_to_be_normalized(double gamma, void * params);
 double kappa_f(double gamma);
 double n_integration_adaptive(double n_max, double n_minus);
 double derivative(double n_start, double nu);
-//from absorptivity
 double K_q(double gamma, double n, double nu);
 double K_u(double gamma, double n, double nu);
 double K_v(double gamma, double n, double nu);
 double D_thermal(double gamma, double nu);
 double D_pl(double gamma, double nu);
 double D_kappa(double gamma, double nu);
-//char mode_choice(double inde);
-
 
 //struct to pass parameters to integrand
 struct parameters
@@ -75,7 +73,7 @@ struct parameters
 #define MJ (0)
 #define POWER_LAW (1)
 #define KAPPA_DIST (2)
-#define DISTRIBUTION_FUNCTION (POWER_LAW)
+#define DISTRIBUTION_FUNCTION (KAPPA_DIST)
 
 //choose absorptivity or emissivity
 #define ABSORP (10)
@@ -84,26 +82,24 @@ struct parameters
 
 int main(int argc, char *argv[])
 {
-    //define parameters of calculation
-    double nu_c = (e * B)/(2. * M_PI * m * c);
-    int index = 0;
-    double nu = 1. * nu_c;
-//    int choice_index = 0;
-    for(index; index < 28; index++)
+    for(kappa = 1; kappa < 11; kappa = kappa + 1)
     {
-        double nu = pow(2., index) * nu_c;
-        
-        printf("\n%e	%e", nu/nu_c, n_summation(nu));
-//        #undef  MODE
-//        choice_index = choice_index + 1;
-        
+//        printf("\n%f",kappa);
+        //define parameters of calculation
+        double nu_c = (e * B)/(2. * M_PI * m * c);
+        int index = 0;
+        //double nu = 1. * nu_c;
+//        for(index; index < 10; index++)
+//        {
+            double nu = pow(2., index) * nu_c;
+            //n_summation(nu);
+            printf("\n%e	%e", nu/nu_c, n_summation(nu));
+//        }
     }
-    //printf("\n%e\n\n", power_law_f(10));
     printf("\n");
-
+    
     return 0;
 }
-
 
 double n_peak(double nu)
 {
@@ -128,9 +124,9 @@ double K_s(double gamma, double n, double nu)
     double M = (cos(theta) - beta * cos_xi)/sin(theta);
     double N = beta * sqrt(1 - (cos_xi*cos_xi));
     double z = (nu * gamma * beta * sin(theta) * sqrt(1. - cos_xi*cos_xi))/nu_c;
-//    double K_xx = M*M * pow(my_Bessel_J(n, z), 2.);
+    double K_xx = M*M * pow(my_Bessel_J(n, z), 2.);
     double K_yy = N*N * pow(my_Bessel_dJ(n, z), 2.);
-    double ans = K_yy;
+    double ans = K_xx + K_yy;
     return ans;
 }
 
@@ -165,37 +161,6 @@ double K_v(double gamma, double n, double nu)
     double ans = -2.*M*N*my_Bessel_J(n, z)*my_Bessel_dJ(n, z);
     return ans;
 }
-
-double K_xx(double gamma, double n, double nu)
-{
-    double nu_c = (e * B)/(2. * M_PI * m * c);
-    double beta = sqrt(1. - 1./(gamma*gamma));
-    double cos_xi = (gamma * nu - n * nu_c)/(gamma * nu * beta * cos(theta));
-    double M = (cos(theta) - beta * cos_xi)/sin(theta);
-    double N = beta * sqrt(1 - (cos_xi*cos_xi));
-    double z = (nu * gamma * beta * sin(theta) * sqrt(1. - cos_xi*cos_xi))/nu_c;
-    double ans = M*M * pow(my_Bessel_J(n, z), 2.);
-    return ans;
-}
-
-double K_yy(double gamma, double n, double nu)
-{
-    double nu_c = (e * B)/(2. * M_PI * m * c);
-    double beta = sqrt(1. - 1./(gamma*gamma));
-    double cos_xi = (gamma * nu - n * nu_c)/(gamma * nu * beta * cos(theta));
-    double M = (cos(theta) - beta * cos_xi)/sin(theta);
-    double N = beta * sqrt(1 - (cos_xi*cos_xi));
-    double z = (nu * gamma * beta * sin(theta) * sqrt(1. - cos_xi*cos_xi))/nu_c;
-    double ans = N*N * pow(my_Bessel_dJ(n, z), 2.);
-    return ans;
-}
-
-
-
-
-
-
-
 
 double D_thermal(double gamma, double nu)
 {
@@ -348,14 +313,11 @@ double n_integration(double n_minus, double nu)
 
 double n_integration_adaptive(double n_minus, double nu)
 {
-    //if(n_max < n_minus)
-    //{
-    //	n_max = (int)(n_minus + 1.)
-    //}
     double n_start = (int)(n_max + n_minus + 1.);
     double ans = 0.;
     double contrib = 0.;
     int i = 0;
+    //double delta_n = 1.e2; if using Simpson's rule
     double delta_n = 1.e5;
     double deriv_tol = 1.e-10;
     double tolerance = 1.e13;
@@ -427,8 +389,6 @@ double normalize_f()
 #else
     return 0;
 #endif
-    
-    //printf("\n%e\n", kappa);
     double unused = 0.;
     F.params = &unused;
     
