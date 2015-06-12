@@ -16,6 +16,7 @@
 double m = 9.1093826e-28;
 double c = 2.99792458e10;
 double theta_e = 10.;
+double w_kappa = 10.;
 double e = 4.80320680e-10;
 double B = 30.;
 double n_e = 1.;
@@ -31,8 +32,8 @@ double n_e_NT = 1.;
 //double gamma_cutoff = 1000.; also a kappa distribution parameter
 
 //kappa distribution parameters
-double kappa;
-double gamma_cutoff = 1000;
+double kappa = 3.5;
+double gamma_cutoff = 1000000;
 
 //function declarations
 double n_peak(double nu);
@@ -82,20 +83,16 @@ struct parameters
 
 int main(int argc, char *argv[])
 {
-    for(kappa = 1; kappa < 11; kappa = kappa + 1)
-    {
-//        printf("\n%f",kappa);
         //define parameters of calculation
         double nu_c = (e * B)/(2. * M_PI * m * c);
         int index = 0;
-        //double nu = 1. * nu_c;
-//        for(index; index < 10; index++)
-//        {
+//        double nu = 1. * nu_c;
+        for(index; index < 24; index++)
+        {
             double nu = pow(2., index) * nu_c;
             //n_summation(nu);
             printf("\n%e	%e", nu/nu_c, n_summation(nu));
-//        }
-    }
+        }
     printf("\n");
     
     return 0;
@@ -219,19 +216,19 @@ double power_law_f(double gamma)
 
 double kappa_to_be_normalized(double gamma, void * params)
 {
-    double kappa_body = pow((1. + (gamma - 1.)/(kappa * theta_e)), -kappa-1);
+    double kappa_body = pow((1. + (gamma - 1.)/(kappa * w_kappa)), -kappa-1);
     double cutoff = exp(-gamma/gamma_cutoff);
     double norm_term = 4. * M_PI * pow(m, 3.) * pow(c, 3.) * gamma * sqrt(gamma*gamma-1.);
-    double ans = kappa_body * cutoff * norm_term;
+    double ans = kappa_body * norm_term;
     return ans;
 }
 
 double kappa_f(double gamma)
 {
     double norm = 1./normalize_f();
-    double kappa_body = pow((1. + (gamma - 1.)/(kappa * theta_e)), -kappa-1);
+    double kappa_body = pow((1. + (gamma - 1.)/(kappa * w_kappa)), -kappa-1);
     double cutoff = exp(-gamma/gamma_cutoff);
-    double ans = norm * kappa_body * cutoff;
+    double ans = norm * kappa_body;
     return ans;
 }
 
