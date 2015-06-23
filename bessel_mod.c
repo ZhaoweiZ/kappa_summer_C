@@ -6,8 +6,6 @@
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_errno.h>
-//#include <gsl_integration.h>
-//#include <gsl_sf_bessel.h>
 
 /* other C header files */
 #include <stdio.h>
@@ -37,19 +35,14 @@ double exp_factor(  double f_factor, double f_exp )  ;
 /******************************************************************************************
    my_Bessel_dJ():
    ----------------
-
   //#if FLAG_JNprime_EQ == JNprime_EQ1
        -- returns the derivative of J_n(x) based on recurrence relation:
-
             J_n'(x) = -J_{n+1}(x) + J_n(x)*(n/x)
-
        -- I use this relation so we do not have to check for n=0 case. 
   //#elif FLAG_JNprime_EQ == JNprime_EQ2
        -- returns the derivative of J_n(x) based on recurrence relation:
-
             2 J_n'(x) = J_{n-1}(x) + J_{n+1}(x)
   //#endif
-
 ******************************************************************************************/
 double my_Bessel_dJ( double n, double x) 
 {
@@ -167,7 +160,6 @@ double my_Bessel_J( double n, double x )
         -- expansion w.r.t. variable "eps",  eps = x - n 
       
         -- because of the order of the eps used, this routine is limited to x < 1e55;
-
  ******************************************************************************************/
 
 double BesselJ_Debye_Eps_Exp( double n , double x ) 
@@ -359,9 +351,7 @@ double BesselJ_bigx( double n, double x)
     exp_factor():
     -----------------
        -- given f_exp, and f_factor, returns with   f_factor * exp( f_exp ) ;
-
        -- performs this calculation more accurately than the straightforward way;
-
 *******************************************************************************************/
 double exp_factor(  double f_factor, double f_exp )  
 {
