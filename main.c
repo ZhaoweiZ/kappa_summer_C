@@ -15,7 +15,7 @@
 //global variables
 double m = 9.1093826e-28;
 double c = 2.99792458e10;
-double theta_e = 30.;
+double theta_e = 10.;
 double e = 4.80320680e-10;
 double B = 30.;
 double n_e = 1.;
@@ -31,7 +31,7 @@ double n_e_NT = 1.;
 //double gamma_cutoff = 1000.; also a kappa distribution parameter
 
 //kappa distribution parameters
-double kappa = 3.5;
+double kappa = 9.5;
 double gamma_cutoff = 10000000;
 
 //function declarations
@@ -75,7 +75,7 @@ struct parameters
 //choose absorptivity or emissivity
 #define ABSORP (10)
 #define EMISS  (11)
-#define MODE   (ABSORP)
+#define MODE   (EMISS)
 
 //choose Stokes mode
 #define K_I (15)
