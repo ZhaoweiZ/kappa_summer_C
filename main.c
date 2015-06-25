@@ -31,8 +31,8 @@ double n_e_NT = 1.;
 //double gamma_cutoff = 1000.; also a kappa distribution parameter
 
 //kappa distribution parameters
-double kappa = 9.5;
-double gamma_cutoff = 10000000;
+double kappa = 3.5;
+double gamma_cutoff = 1000000000000.;
 
 //function declarations
 double n_peak(double nu);
@@ -77,23 +77,26 @@ struct parameters
 #define EMISS  (11)
 #define MODE   (EMISS)
 
-//choose Stokes mode
+//choose polarization mode
 #define K_I (15)
 #define K_Q (16)
 #define K_U (17)
 #define K_V (18)
-#define STOKES_MODE (K_I)
+#define K_XX (19)
+#define K_OO (20)
+#define POL_MODE (K_I)
 
 int main(int argc, char *argv[])
 {
 	//define parameters of calculation
 	double nu_c = (e * B)/(2. * M_PI * m * c);
 	int index = 0;
-	double nu = 1. * nu_c;
-	for(index; index < 23; index++)
+	//double nu = 1.e2 * nu_c;
+	for(index; index < 42; index++)
 	{
 		double nu = pow(2., index) * nu_c;
 		printf("\n%e	%e", nu/nu_c, n_summation(nu));
+		//n_summation(nu);
 	}
 	printf("\n");
 	return 0;
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
 double n_peak(double nu)
 {
 	double nu_c = (e * B)/(2. * M_PI * m * c);
-	if(nu <= nu_c * theta_e*theta_e){
+	if(nu <= nu_c * theta_e*theta_e || theta_e < 1.){
 		double beta_67 = sqrt((1. - 1./pow((1. + theta_e),2.)));
 		double n_peak = (theta_e + 1. + pow((2. * theta_e * nu / nu_c),1./3.)) * (nu/nu_c) * (1. - beta_67*beta_67 * pow(cos(theta),2.));
 		return n_peak;
@@ -124,14 +127,19 @@ double K_s(double gamma, double n, double nu)
 	double z = (nu * gamma * beta * sin(theta) * sqrt(1. - cos_xi*cos_xi))/nu_c;
 	double K_xx = M*M * pow(my_Bessel_J(n, z), 2.);
 	double K_yy = N*N * pow(my_Bessel_dJ(n, z), 2.);
-#if STOKES_MODE == K_I
+	double T_x = (2.*nu*cos(theta))/(nu_c*pow(sin(theta), 2.)+sqrt(nu_c*nu_c*pow(sin(theta), 4.)+4.*nu*nu*pow(cos(theta), 2.)));
+#if POL_MODE == K_I
 	double ans = K_xx + K_yy;
-#elif STOKES_MODE == K_Q
+#elif POL_MODE == K_Q
 	double ans = K_xx - K_yy;
-#elif STOKES_MODE == K_U
+#elif POL_MODE == K_U
 	double ans = 0.;
-#elif STOKES_MODE == K_V
+#elif POL_MODE == K_V
 	double ans = -2.*M*N*my_Bessel_J(n, z)*my_Bessel_dJ(n, z);
+#elif POL_MODE == K_XX //factor of 2 out front comes from eq. 43 as opposed to 42
+	double ans = 2.*pow(M*T_x*my_Bessel_J(n, z)+N*my_Bessel_dJ(n, z), 2.)/(1. + T_x*T_x);
+#elif POL_MODE == K_OO //factor of 2 again from eq. 43
+	double ans = 2.*pow(M*T_x*my_Bessel_J(n, z)-N*my_Bessel_dJ(n, z), 2.)/(1. + T_x*T_x);
 #endif
 	return ans;
 }
@@ -177,8 +185,8 @@ double power_law_to_be_normalized(double gamma, void * params)
 {
 	double norm_term = 4. * M_PI;
 	double prefactor = n_e_NT * (p - 1.) / (pow(gamma_min, 1. - p) - pow(gamma_max, 1. - p));
-	double body = pow(gamma, -p) * exp(- gamma / gamma_cutoff);
-	//double body = pow(gamma, -p);
+	//double body = pow(gamma, -p) * exp(- gamma / gamma_cutoff);
+	double body = pow(gamma, -p);
 	double ans = norm_term * prefactor * body;
 	return ans;
 }
@@ -187,8 +195,8 @@ double power_law_f(double gamma)
 {
 	double beta = sqrt(1. - 1./(gamma*gamma));
 	double prefactor = n_e_NT * (p - 1.) / (pow(gamma_min, 1. - p) - pow(gamma_max, 1. - p));
-	double body = pow(gamma, -p) * exp(- gamma / gamma_cutoff);
-	//double body = pow(gamma, -p);
+	//double body = pow(gamma, -p) * exp(- gamma / gamma_cutoff);
+	double body = pow(gamma, -p);
 	double ans = 1./normalize_f() * prefactor * body * 1./(pow(m, 3.) * pow(c, 3.) * gamma*gamma * beta);
 	return ans;
 }
@@ -196,7 +204,6 @@ double power_law_f(double gamma)
 double kappa_to_be_normalized(double gamma, void * params)
 {
 	double kappa_body = pow((1. + (gamma - 1.)/(kappa * theta_e)), -kappa-1);
-	//double kappa_body = pow((1. + gamma/(kappa*theta_e)), -kappa-1.);
 	double cutoff = exp(-gamma/gamma_cutoff);
 	double norm_term = 4. * M_PI * pow(m, 3.) * pow(c, 3.) * gamma * sqrt(gamma*gamma-1.);
 	double ans = kappa_body * cutoff * norm_term;
@@ -272,13 +279,48 @@ double gamma_integrand(double gamma, void * params)
 
 double gamma_integration_result(double n, void * params)
 {
-	double nu = *(double *) params;
-	double nu_c = (e * B)/(2. * M_PI * m * c);
-	double gamma_minus = ((n*nu_c)/nu - fabs(cos(theta))*sqrt((pow((n*nu_c)/nu, 2.)) - pow(sin(theta), 2.)))/(pow(sin(theta), 2));
-	double gamma_plus  = ((n*nu_c)/nu + fabs(cos(theta))*sqrt((pow((n*nu_c)/nu, 2.)) - pow(sin(theta), 2.)))/(pow(sin(theta), 2));
-	double result = gsl_integrate(gamma_minus, gamma_plus, n, nu);
-	return result;
+        double nu = *(double *) params;
+        double nu_c = (e * B)/(2. * M_PI * m * c);
+        double gamma_minus = ((n*nu_c)/nu - fabs(cos(theta))*sqrt((pow((n*nu_c)/nu, 2.)) - pow(sin(theta), 2.)))/(pow(sin(theta), 2));
+        double gamma_plus  = ((n*nu_c)/nu + fabs(cos(theta))*sqrt((pow((n*nu_c)/nu, 2.)) - pow(sin(theta), 2.)))/(pow(sin(theta), 2));
+        double result = 0.;
+
+        //needs help resolving peak for nu/nu_c > 1e6
+        //used numerical fit to peak location
+        double gamma_peak = 1.33322780e-06 * n / ((nu/nu_c) / 1.e6);
+        double width = 0.;
+        if(nu/nu_c < 5.e7)
+        {
+                width = 10.;
+        }
+	else if(5.e7 <= nu/nu_c < 3.e8)
+	{
+                width = 100.;
+        }
+	else 
+	{
+		width = 1000.;
+	}
+	double gamma_minus_high = gamma_peak - (gamma_peak-gamma_minus)/width;
+        double gamma_plus_high = gamma_peak + (gamma_plus-gamma_peak)/width;
+
+        if(nu/nu_c > 1.e6)
+        {
+                result = gsl_integrate(gamma_minus_high, gamma_plus_high, n, nu);
+        }
+	else
+	{
+                result = gsl_integrate(gamma_minus, gamma_plus, n, nu);
+        }
+
+	if(isnan(result) != 0)
+        {
+                result = 0.;
+        }
+	//printf("\n%e\n", n);
+        return result;
 }
+
 
 double n_integration(double n_minus, double nu)
 {
@@ -287,6 +329,7 @@ double n_integration(double n_minus, double nu)
 		n_max = (int) (n_minus+1);
 	}
 	double ans = gsl_integrate(n_max, C * n_peak(nu), -1, nu);
+	printf("\n n integration \n");
 	return ans;
 }
 
@@ -296,18 +339,18 @@ double n_integration_adaptive(double n_minus, double nu)
 	double ans = 0.;
 	double contrib = 0.;
 	int i = 0;
-	//double delta_n = 1.e2;// if using Simpson's rule
-	double delta_n = 1.e5;
+	double delta_n = 1.e5;// if using Simpson's rule
+	//double delta_n = 1.e5;
 	double deriv_tol = 1.e-10;
-	double tolerance = 1.e13;
+	double tolerance = 1.e5;
 
 	while(contrib >= ans/tolerance)
 	{
 		double deriv = derivative(n_start, nu);
 		if(fabs(deriv) < deriv_tol)
 		{
-			delta_n = 100. * delta_n;
 			//delta_n = 1. * delta_n;
+			delta_n = 100. * delta_n;
 		}
 
 		contrib = gsl_integrate(n_start, (n_start + delta_n), -1, nu);
@@ -378,4 +421,42 @@ double normalize_f()
 	gsl_integration_workspace_free (w);
 	ans = result;
 	return result;
+}
+
+double gsl_integrate(double min, double max, double n, double nu)
+{
+	double nu_c = (e * B)/(2. * M_PI * m * c);
+	if(nu/nu_c > 1.e6)
+	{
+		gsl_set_error_handler_off();
+	}
+
+	if(n < 0)//do n integration
+	{
+		double nu_c = (e * B)/(2. * M_PI * m * c);
+		gsl_integration_workspace * w = gsl_integration_workspace_alloc (5000);
+ 		double result, error;
+		gsl_function F;
+  		F.function = &gamma_integration_result;
+		F.params = &nu;
+		gsl_integration_qag(&F, min, max, 0., 1.e-3, 1000,
+                      3,  w, &result, &error);
+		gsl_integration_workspace_free (w);
+		return result;
+	}
+	else//do gamma integration
+	{
+		gsl_integration_workspace * w = gsl_integration_workspace_alloc (5000);
+		double result, error;
+		struct parameters n_and_nu;
+		n_and_nu.n = n;
+		n_and_nu.nu = nu;
+		gsl_function F;
+		F.function = &gamma_integrand;
+		F.params = &n_and_nu;
+		gsl_integration_qag(&F, min, max, 0., 1.e-3, 1000,
+                      3,  w, &result, &error);
+		gsl_integration_workspace_free (w);
+		return result; 
+	}
 }
