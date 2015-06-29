@@ -11,6 +11,7 @@
 #include <math.h>
 #include <float.h>
 #include <ctype.h>
+#include <omp.h>
 
 //global variables
 double m = 9.1093826e-28;
@@ -31,7 +32,7 @@ double n_e_NT = 1.;
 //double gamma_cutoff = 1000.; also a kappa distribution parameter
 
 //kappa distribution parameters
-double kappa = 3.5;
+double kappa = 7.5;
 double gamma_cutoff = 1000000000000.;
 
 //function declarations
@@ -75,7 +76,7 @@ struct parameters
 //choose absorptivity or emissivity
 #define ABSORP (10)
 #define EMISS  (11)
-#define MODE   (EMISS)
+#define MODE   (ABSORP)
 
 //choose polarization mode
 #define K_I (15)
@@ -86,13 +87,14 @@ struct parameters
 #define K_OO (20)
 #define POL_MODE (K_I)
 
+/*
 int main(int argc, char *argv[])
 {
 	//define parameters of calculation
 	double nu_c = (e * B)/(2. * M_PI * m * c);
-	int index = 0;
+	int index = 20;
 	//double nu = 1.e2 * nu_c;
-	for(index; index < 42; index++)
+	for(index; index <= 21; index++)
 	{
 		double nu = pow(2., index) * nu_c;
 		printf("\n%e	%e", nu/nu_c, n_summation(nu));
@@ -101,6 +103,32 @@ int main(int argc, char *argv[])
 	printf("\n");
 	return 0;
 }
+
+*/
+
+
+int main(int argc, char *argv[])
+{
+	//define parameters of calculation
+	double nu_c = (e * B)/(2. * M_PI * m * c);
+
+
+//	#pragma omp parallel
+//	{
+	int index;
+//	#pragma omp for private(index)
+	for(index = 0; index <= 30; index++)
+	{
+		double nu = pow(2., index) * nu_c;
+		printf("\n%e	%e", nu/nu_c, n_summation(nu));
+	}
+//	}
+	printf("\n");
+	return 0;
+}
+
+
+
 
 double n_peak(double nu)
 {
@@ -289,17 +317,17 @@ double gamma_integration_result(double n, void * params)
         //used numerical fit to peak location
         double gamma_peak = 1.33322780e-06 * n / ((nu/nu_c) / 1.e6);
         double width = 0.;
-        if(nu/nu_c < 5.e7)
+        if(nu/nu_c <= 3.e8)
         {
                 width = 10.;
         }
-	else if(5.e7 <= nu/nu_c < 3.e8)
-	{
-                width = 100.;
-        }
-	else 
+	else if(3.e8 <  nu/nu_c < 2.e10 )
 	{
 		width = 1000.;
+	}
+	else
+	{
+		width = 100000.;
 	}
 	double gamma_minus_high = gamma_peak - (gamma_peak-gamma_minus)/width;
         double gamma_plus_high = gamma_peak + (gamma_plus-gamma_peak)/width;
@@ -329,7 +357,7 @@ double n_integration(double n_minus, double nu)
 		n_max = (int) (n_minus+1);
 	}
 	double ans = gsl_integrate(n_max, C * n_peak(nu), -1, nu);
-	printf("\n n integration \n");
+//	printf("\n n integration \n");
 	return ans;
 }
 
