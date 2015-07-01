@@ -46,6 +46,8 @@ double n_e_NT = 1.;
 double kappa = 3.5;
 double w = 10.; //width of core of kappa dist.
 double gamma_cutoff = 1000000000000;
+int STOKES_INDEX;
+
 
 //function declarations
 double n_peak(double nu);
@@ -67,6 +69,7 @@ double kappa_f(double gamma);
 double derivative(double n_start, double nu);
 double differential_of_f(double gamma, double nu);
 
+
 //struct to pass parameters to integrand
 struct parameters{
   double n;
@@ -77,12 +80,12 @@ struct parameters{
 #define THERMAL (0)
 #define POWER_LAW (1)
 #define KAPPA_DIST (2)
-#define DISTRIBUTION_FUNCTION (KAPPA_DIST)
+#define DISTRIBUTION_FUNCTION (POWER_LAW)
 
 //choose absorptivity or emissivity
 #define ABSORP (10)
 #define EMISS  (11)
-#define MODE   (ABSORP)
+#define MODE   (EMISS)
 
 //choose polarization mode
 #define STOKES_I (15)
@@ -91,12 +94,13 @@ struct parameters{
 #define STOKES_V (18)
 #define EXTRAORDINARY_MODE (19)
 #define ORDINARY_MODE (20)
-#define POL_MODE (STOKES_I)
+#define POL_MODE (STOKES_V)
 
 /* main: defines nu_c (cyclotron frequency) and loops through values of nu, 
  * to give output absorptivity or emissivity vs. nu/nu_c; can also be modified
  * to give abs/emiss as a function of its other parameters, like obs. angle
  */
+/*
 int main(int argc, char *argv[]) {
   double nu_c = (electron_charge * B_field)
  	       /(2. * M_PI * mass_electron * speed_light);
@@ -107,19 +111,47 @@ int main(int argc, char *argv[]) {
   int index;
   #pragma omp for private(index) schedule(dynamic)
   for (index = 0; index <= 34; index++) {
-
     double nu = pow(2., index) * nu_c;
-    output_array[index][0] = nu/nu_c;
-    output_array[index][1] = n_summation(nu);
+//    output_array[index][0] = nu/nu_c;
+//    output_array[index][1] = n_summation(nu);
+//  }
+//  }
+//  int i;
+//  for (i = 0; i <= 34; i++){
+//    printf("\n%e	%e", output_array[i][0], output_array[i][1]);
+    printf("\n%e	%e", nu/nu_c, n_summation(nu));
   }
-  }
-  int i;
-  for (i = 0; i <= 34; i++){
-    printf("\n%e	%e", output_array[i][0], output_array[i][1]);
   }
   printf("\n");
   return 0;
 }
+
+*/
+int main(int argc, char *argv[]) {
+  double nu_c = (electron_charge * B_field)
+               /(2. * M_PI * mass_electron * speed_light);
+
+  double output_array[35][2];
+  #pragma omp parallel num_threads(4)
+  {
+  int index;
+  #pragma omp for private(index) schedule(dynamic)
+  for (index = 0; index <= 34; index++) {
+    double nu = pow(2., index) * nu_c;
+
+    STOKES_INDEX = 1;
+    double stokes_positive = n_summation(nu);
+    STOKES_INDEX = 0;
+    double stokes_negative = n_summation(nu);
+
+    printf("\n%e	%e", nu/nu_c, stokes_positive + stokes_negative);
+
+  }
+  }
+  printf("\n");
+  return 0;
+}
+
 
 /*n_peak: gives the location of the peak of the n integrand for 
  *the THERMAL distribution; uses Eq. 68 in [1]
@@ -404,14 +436,18 @@ double gamma_integration_result(double n, void * params)
   double width = 0.;
 
   if (nu/nu_c < 3.e8) width = 10.;
-  else                width = 1000.;
+  else                width = 100000.;
 
   double gamma_minus_high = gamma_peak - (gamma_peak-gamma_minus)/width;
   double gamma_plus_high = gamma_peak + (gamma_plus-gamma_peak)/width;
 
-  if (POL_MODE == STOKES_V) {
+  if (POL_MODE == STOKES_V && STOKES_INDEX == 1){
     result = gsl_integrate(gamma_minus, gamma_peak, n, nu);
-    result = result + gsl_integrate(gamma_peak, gamma_plus, n, nu);
+//    result = result + gsl_integrate(gamma_peak, gamma_plus, n, nu);
+    return result;
+  }
+  if (POL_MODE == STOKES_V && STOKES_INDEX == 0){
+    result = gsl_integrate(gamma_peak, gamma_plus, n, nu);
     return result;
   }
 
