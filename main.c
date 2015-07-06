@@ -22,7 +22,6 @@
 #include <float.h>
 #include <ctype.h>
 #include <omp.h>
-#include <time.h>
 
 //parameters of calculation
 double mass_electron = 9.1093826e-28;
@@ -31,7 +30,7 @@ double theta_e = 10.;
 double electron_charge = 4.80320680e-10;
 double B_field = 30.;
 double n_e = 1.;
-double observer_angle = (M_PI  / 3.);
+double observer_angle = (17. * M_PI  / 36.);
 int C = 10;
 double n_max = 30.;
 
@@ -46,8 +45,6 @@ double n_e_NT = 1.;
 double kappa = 3.5;
 double w = 10.; //width of core of kappa dist.
 double gamma_cutoff = 1000000000000;
-int STOKES_INDEX;
-
 
 //function declarations
 double n_peak(double nu);
@@ -68,7 +65,6 @@ double kappa_to_be_normalized(double gamma, void * params);
 double kappa_f(double gamma);
 double derivative(double n_start, double nu);
 double differential_of_f(double gamma, double nu);
-
 
 //struct to pass parameters to integrand
 struct parameters{
@@ -94,14 +90,19 @@ struct parameters{
 #define STOKES_V (18)
 #define EXTRAORDINARY_MODE (19)
 #define ORDINARY_MODE (20)
-#define POL_MODE (STOKES_V)
+#define POL_MODE (STOKES_I)
+
+//need 2 separate n integrations to numerically resolve STOKES_V
+static int stokes_v_switch = 0.;
 
 /* main: defines nu_c (cyclotron frequency) and loops through values of nu, 
  * to give output absorptivity or emissivity vs. nu/nu_c; can also be modified
  * to give abs/emiss as a function of its other parameters, like obs. angle
  */
-/*
+
+
 int main(int argc, char *argv[]) {
+
   double nu_c = (electron_charge * B_field)
  	       /(2. * M_PI * mass_electron * speed_light);
 
@@ -110,8 +111,8 @@ int main(int argc, char *argv[]) {
   {
   int index;
   #pragma omp for private(index) schedule(dynamic)
-  for (index = 0; index <= 34; index++) {
-    double nu = pow(2., index) * nu_c;
+  for (index = 0; index <= 10; index++) {
+    double nu = pow(10., index) * nu_c;
 //    output_array[index][0] = nu/nu_c;
 //    output_array[index][1] = n_summation(nu);
 //  }
@@ -124,33 +125,10 @@ int main(int argc, char *argv[]) {
   }
   printf("\n");
   return 0;
+
 }
 
-*/
-int main(int argc, char *argv[]) {
-  double nu_c = (electron_charge * B_field)
-               /(2. * M_PI * mass_electron * speed_light);
 
-  double output_array[35][2];
-  #pragma omp parallel num_threads(4)
-  {
-  int index;
-  #pragma omp for private(index) schedule(dynamic)
-  for (index = 0; index <= 34; index++) {
-    double nu = pow(2., index) * nu_c;
-
-    STOKES_INDEX = 1;
-    double stokes_positive = n_summation(nu);
-    STOKES_INDEX = 0;
-    double stokes_negative = n_summation(nu);
-
-    printf("\n%e	%e", nu/nu_c, stokes_positive + stokes_negative);
-
-  }
-  }
-  printf("\n");
-  return 0;
-}
 
 
 /*n_peak: gives the location of the peak of the n integrand for 
@@ -215,9 +193,10 @@ double polarization_term(double gamma, double n, double nu) {
   #endif
 
   //we need to account for factor of 2 difference between eq. 42 and 43 of [1]
-  if((POL_MODE == EXTRAORDINARY_MODE || POL_MODE == ORDINARY_MODE) && MODE == ABSORP) {
+  if((POL_MODE==EXTRAORDINARY_MODE||POL_MODE==ORDINARY_MODE)&&MODE==ABSORP) {
     ans = 2. * ans;
-  } 
+  }
+
 
   return ans;
 }
@@ -432,34 +411,44 @@ double gamma_integration_result(double n, void * params)
 
   //needs help resolving peak for nu/nu_c > 1e6
   //gamma_peak is an accurate numerical fit to peak location
-  double gamma_peak = 1.33322780e-06 * n / ((nu/nu_c) / 1.e6);
-  double width = 0.;
+  double gamma_peak = (gamma_plus+gamma_minus)/2.;//1.33322780e-06 * n / ((nu/nu_c) / 1.e6);
+  double width = 1.;
 
-  if (nu/nu_c < 3.e8) width = 10.;
-  else                width = 100000.;
+  if (nu/nu_c > 1.e6 && nu/nu_c <= 3.e8) width = 10.;
+  else if (nu/nu_c > 3.e8)               width = 1000.;
 
   double gamma_minus_high = gamma_peak - (gamma_peak-gamma_minus)/width;
   double gamma_plus_high = gamma_peak + (gamma_plus-gamma_peak)/width;
 
-  if (POL_MODE == STOKES_V && STOKES_INDEX == 1){
-    result = gsl_integrate(gamma_minus, gamma_peak, n, nu);
-//    result = result + gsl_integrate(gamma_peak, gamma_plus, n, nu);
-    return result;
-  }
-  if (POL_MODE == STOKES_V && STOKES_INDEX == 0){
-    result = gsl_integrate(gamma_peak, gamma_plus, n, nu);
-    return result;
+  if(POL_MODE == STOKES_V && stokes_v_switch >= 0) {
+    double neg_result = gsl_integrate(gamma_minus_high, gamma_peak, n, nu);
+    double pos_result = gsl_integrate(gamma_peak, gamma_plus_high, n, nu);
+    if(stokes_v_switch == 0) result = pos_result;
+    else                     result = neg_result;
   }
 
-  if (nu/nu_c > 1.e6) {
+  if (POL_MODE != STOKES_V || stokes_v_switch < 0) {
     result = gsl_integrate(gamma_minus_high, gamma_plus_high, n, nu);
-  }
-  else {
-    result = gsl_integrate(gamma_minus, gamma_plus, n, nu);
   }
 
   if(isnan(result) != 0) result = 0.;
-
+  double output_array[35][2];
+  #pragma omp parallel num_threads(4)
+  {
+  int index;
+  #pragma omp for private(index) schedule(dynamic)
+  for (index = 0; index <= 34; index++) {
+    double nu = pow(2., index) * nu_c;
+//    output_array[index][0] = nu/nu_c;
+//    output_array[index][1] = n_summation(nu);
+//  }
+//  }
+//  int i;
+//  for (i = 0; i <= 34; i++){
+//    printf("\n%e	%e", output_array[i][0], output_array[i][1]);
+    printf("\n%e	%e", nu/nu_c, n_summation(nu));
+  }
+  }
   return result;
 }
 
@@ -487,7 +476,7 @@ double n_integration(double n_minus, double nu)
     double contrib = 0.;
     double delta_n = 1.e5;
     double deriv_tol = 1.e-5;
-    double tolerance = 1.e10;
+    double tolerance = 1.e5;
 
     while (fabs(contrib) >= fabs(ans/tolerance)) {
       double deriv = derivative(n_start, nu);
@@ -512,19 +501,26 @@ double n_integration(double n_minus, double nu)
  */
 double n_summation(double nu)
 {
-  #if POL_MODE == STOKES_U
-    return 0.;
-  #endif
+
   double ans = 0.;
   double nu_c = (electron_charge * B_field)
                /(2. * M_PI * mass_electron * speed_light);
   double n_minus = (nu/nu_c) * fabs(sin(observer_angle));
   int x = (int)(n_minus+1.);
+
+  stokes_v_switch = -1;
+
   for (x; x <= n_max + (int)n_minus ; x++) {
     ans += gamma_integration_result(x, &nu);
   }
+  stokes_v_switch = 0;
+  ans += n_integration(n_minus, nu);
 
-  ans = ans + n_integration(n_minus, nu);
+  #if POL_MODE == STOKES_V
+    stokes_v_switch = 1;
+    ans += n_integration(n_minus, nu);
+  #endif
+
   return ans;
 }
 
@@ -592,7 +588,7 @@ double gsl_integrate(double min, double max, double n, double nu)
   if (n < 0) { //do n integration
     F.function = &gamma_integration_result;
     F.params = &nu;
-    gsl_integration_qag(&F, min, max, 0., 1.e-3, 1000,
+    gsl_integration_qag(&F, min, max, 0., 1.e-3, 200,
                          3,  w, &result, &error);
   }
   else {  //do gamma integration
@@ -601,7 +597,7 @@ double gsl_integrate(double min, double max, double n, double nu)
   n_and_nu.nu = nu;
   F.function = &gamma_integrand;
   F.params = &n_and_nu;
-  gsl_integration_qag(&F, min, max, 0., 1.e-3, 1000,
+  gsl_integration_qag(&F, min, max, 0., 1.e-3, 200,
                        3,  w, &result, &error);
   }
 
