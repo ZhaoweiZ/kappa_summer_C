@@ -21,7 +21,6 @@
 #include <math.h>
 #include <float.h>
 #include <ctype.h>
-#include <omp.h>
 
 //parameters of calculation
 double mass_electron = 9.1093826e-28;
@@ -30,7 +29,7 @@ double theta_e = 10.;
 double electron_charge = 4.80320680e-10;
 double B_field = 30.;
 double n_e = 1.;
-double observer_angle = (17. * M_PI  / 36.);
+double observer_angle = (12. * M_PI  / 36.);
 int C = 10;
 double n_max = 30.;
 
@@ -76,7 +75,7 @@ struct parameters{
 #define THERMAL (0)
 #define POWER_LAW (1)
 #define KAPPA_DIST (2)
-#define DISTRIBUTION_FUNCTION (POWER_LAW)
+#define DISTRIBUTION_FUNCTION (KAPPA_DIST)
 
 //choose absorptivity or emissivity
 #define ABSORP (10)
@@ -90,7 +89,7 @@ struct parameters{
 #define STOKES_V (18)
 #define EXTRAORDINARY_MODE (19)
 #define ORDINARY_MODE (20)
-#define POL_MODE (STOKES_I)
+#define POL_MODE (STOKES_Q)
 
 //need 2 separate n integrations to numerically resolve STOKES_V
 static int stokes_v_switch = 0.;
@@ -106,30 +105,17 @@ int main(int argc, char *argv[]) {
   double nu_c = (electron_charge * B_field)
  	       /(2. * M_PI * mass_electron * speed_light);
 
-  double output_array[35][2];
-  #pragma omp parallel num_threads(4)
-  {
-  int index;
-  #pragma omp for private(index) schedule(dynamic)
-  for (index = 0; index <= 10; index++) {
-    double nu = pow(10., index) * nu_c;
-//    output_array[index][0] = nu/nu_c;
-//    output_array[index][1] = n_summation(nu);
-//  }
-//  }
-//  int i;
-//  for (i = 0; i <= 34; i++){
-//    printf("\n%e	%e", output_array[i][0], output_array[i][1]);
+  int index = 0;
+  for (index; index < 51; index++) {
+
+    double nu = pow(10., index/5.) * nu_c;
     printf("\n%e	%e", nu/nu_c, n_summation(nu));
-  }
+
   }
   printf("\n");
   return 0;
 
 }
-
-
-
 
 /*n_peak: gives the location of the peak of the n integrand for 
  *the THERMAL distribution; uses Eq. 68 in [1]
@@ -432,23 +418,7 @@ double gamma_integration_result(double n, void * params)
   }
 
   if(isnan(result) != 0) result = 0.;
-  double output_array[35][2];
-  #pragma omp parallel num_threads(4)
-  {
-  int index;
-  #pragma omp for private(index) schedule(dynamic)
-  for (index = 0; index <= 34; index++) {
-    double nu = pow(2., index) * nu_c;
-//    output_array[index][0] = nu/nu_c;
-//    output_array[index][1] = n_summation(nu);
-//  }
-//  }
-//  int i;
-//  for (i = 0; i <= 34; i++){
-//    printf("\n%e	%e", output_array[i][0], output_array[i][1]);
-    printf("\n%e	%e", nu/nu_c, n_summation(nu));
-  }
-  }
+
   return result;
 }
 
